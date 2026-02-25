@@ -1,0 +1,37 @@
+{
+  "name": "debug-us-backend",
+  "version": "1.0.0",
+  "description": "A real-time multiplayer Among Us style debugging game where players collaboratively fix a broken codebase under time pressure while a hidden impostor secretly sabotages the debugging process.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Akshaya-SK/debug-us-backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Akshaya-SK/debug-us-backend/issues"
+  },
+  "homepage": "https://github.com/Akshaya-SK/debug-us-backend#readme",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongodb": "4.1",
+    "mongoose": "^9.2.1",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}

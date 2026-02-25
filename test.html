@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+
+<button onclick="create()">Create Session</button>
+<button onclick="join()">Join Session</button>
+
+<script>
+  const socket = io("http://localhost:5000")
+
+  socket.on("connect", () => {
+    console.log("Connected:", socket.id)
+  })
+
+  function create() {
+    socket.emit("create_session", {
+      username: "User" + Math.floor(Math.random()*100)
+    })
+  }
+
+  function join() {
+    const code = prompt("Enter session code:")
+    socket.emit("join_session", {
+      sessionCode: code,
+      username: "User" + Math.floor(Math.random()*100)
+    })
+  }
+
+  socket.on("session_created", console.log)
+  socket.on("player_list_update", console.log)
+  socket.on("role_assigned", console.log)
+  socket.on("game_started", console.log)
+</script>
+
+</body>
+</html>
