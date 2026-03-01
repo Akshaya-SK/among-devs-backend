@@ -4,13 +4,20 @@ function generateRoomId() {
   return Math.random().toString(36).substring(2, 8).toUpperCase()
 }
 
-function createRoom(socketId, userId, username) {
+function createRoom(socketId, userId, username, language, difficulty) {
   const roomId = generateRoomId()
 
   rooms[roomId] = {
     id: roomId,
-    status: "waiting",
+
+    language,
+    difficulty,
+
+    status: "waiting", // waiting | in_progress | ended
+
     hostId: socketId,
+    hackerId: null,
+
     players: [
       {
         socketId,
@@ -20,6 +27,15 @@ function createRoom(socketId, userId, username) {
         isAlive: true
       }
     ],
+
+    task: null,        // assigned when game starts
+    votes: {},         // voterSocketId -> targetSocketId
+
+    timer: {
+      startedAt: null,
+      duration: 180000 // 3 minutes default
+    },
+
     createdAt: new Date()
   }
 
@@ -63,6 +79,10 @@ function leaveRoom(roomId, socketId) {
 
   room.players = room.players.filter(p => p.socketId !== socketId)
 
+  if (room.hackerId === socketId) {
+    room.hackerId = null
+  }
+
   if (room.players.length === 0) {
     console.log("Deleting room:", roomId)
     delete rooms[roomId]
@@ -80,10 +100,37 @@ function getRoom(roomId) {
   return rooms[roomId]
 }
 
+function joinRandomRoom(socketId, userId, username, language, difficulty) {
+  for (const roomId in rooms) {
+    const room = rooms[roomId]
+
+    if (
+      room.status === "waiting" &&
+      room.players.length < 5 &&
+      room.language === language &&
+      room.difficulty === difficulty
+    ) {
+      room.players.push({
+        socketId,
+        userId,
+        username,
+        role: null,
+        isAlive: true
+      })
+
+      return room
+    }
+  }
+
+  // If no match found → create new room
+  return createRoom(socketId, userId, username, language, difficulty)
+}
+
 module.exports = {
   createRoom,
   joinRoom,
   leaveRoom,
   getRoom,
-  findRoomBySocketId
+  findRoomBySocketId,
+  joinRandomRoom
 }

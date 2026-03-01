@@ -1,62 +1,32 @@
 const roomService = require("./roomService")
+const { pickRandomQuestion } = require("./questionsService")
 
 function initializeGame(roomId) {
   const room = roomService.getRoom(roomId)
-  console.log("initializeGame called for:", roomId)
-
   if (!room) throw new Error("Room not found")
 
   room.status = "in_progress"
 
   assignRoles(room)
 
-  room.systems = generateSystems()
+  const question = pickRandomQuestion(
+    room.language,
+    room.difficulty
+  )
 
-  randomizeBrokenSystems(room.systems)  // initializing broken systems
-
-  return room
-}
-
-function randomX() {
-  return Math.floor(Math.random() * 1000)
-}
-
-function randomY() {
-  return Math.floor(Math.random() * 600)
-}
-
-function generateSystems() {
-  const systems = []
-
-  for (let i = 1; i <= 10; i++) {
-    systems.push({
-      id: i,
-      location: {
-        x: Math.floor(Math.random() * 1000),
-        y: Math.floor(Math.random() * 600)
-      },
-      status: "healthy",
-      errorType: null,
-      isBeingUsed: false,
-      lastUpdatedBy: null,
-      cooldownUntil: null
-    })
+  room.task = {
+    ...question,
+    originalCode: question.buggyCode,
+    currentCode: question.buggyCode,
+    status: "broken",
+    attempts: 0,
+    fixedBy: null,
+    sabotagedBy: null
   }
 
-  return systems
-}
+  room.timer.startedAt = Date.now()
 
-
-function randomizeBrokenSystems(systems) {
-  const shuffled = systems.sort(() => 0.5 - Math.random())
-  const broken = shuffled.slice(0, 5)
-
-  const errorTypes = ["syntax", "logic", "infinite_loop", "merge_conflict"]
-
-  broken.forEach(system => {
-    system.status = "broken"
-    system.errorType = errorTypes[Math.floor(Math.random() * errorTypes.length)]
-  })
+  return room
 }
 
 function assignRoles(room) {
@@ -71,31 +41,37 @@ function assignRoles(room) {
   }
 }
 
+
+
 function checkWinCondition(room) {
-  const brokenCount = room.systems.filter(s => s.status === "broken").length
+  if (room.status !== "in_progress") return null
 
   const developerCount = room.players.filter(
-    p => p.role === "developer"
+    p => p.role === "developer" && p.isAlive
   ).length
 
   const hackerAlive = room.players.some(
-    p => p.role === "hacker"
+    p => p.role === "hacker" && p.isAlive
   )
 
+  // Developers win if task fixed
+  if (room.task.status === "fixed") {
+    return { winner: "developers", reason: "Task fixed" }
+  }
+
+  // Timer expired → hacker wins
+  if (Date.now() - room.timer.startedAt > room.timer.duration) {
+    return { winner: "hacker", reason: "Time expired" }
+  }
+
+  // Hacker eliminated
   if (!hackerAlive) {
     return { winner: "developers", reason: "Hacker eliminated" }
   }
 
-  if (developerCount === 0) {
-    return { winner: "hacker", reason: "All developers eliminated" }
-  }
-
-  if (brokenCount === 0) {
-    return { winner: "developers", reason: "All systems fixed" }
-  }
-
-  if (brokenCount >= 7) {
-    return { winner: "hacker", reason: "Too many systems broken" }
+  // Parity condition
+  if (developerCount <= 1 && hackerAlive) {
+    return { winner: "hacker", reason: "Hacker reached parity" }
   }
 
   return null
@@ -105,12 +81,18 @@ function endGame(io, room, result) {
   room.status = "ended"
 
   io.to(room.id).emit("game_over", result)
+  io.to(room.id).emit("room_update", room)
+}
+
+function handlePlayerRemoval(room) {
+  if (room.status !== "in_progress") return null
+  return checkWinCondition(room)
 }
 
 
 module.exports = {
   initializeGame,
-  randomizeBrokenSystems,
   checkWinCondition,
-  endGame
+  endGame,
+  handlePlayerRemoval
 }

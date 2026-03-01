@@ -1,60 +1,69 @@
-const systemService = require("../services/systemService")
 const roomService = require("../services/roomService")
 const gameService = require("../services/gameService")
+const { validateSubmission } = require("../services/validationService")
 
 module.exports = (io, socket) => {
 
-  socket.on("system_interact", ({ systemId }) => {
+  // 🔄 Real-time code sync
+  socket.on("update_code", ({ code }) => {
     const room = roomService.getRoom(socket.roomId)
     if (!room || room.status !== "in_progress") return
 
-    try {
-      systemService.lockSystem(room, systemId, socket.id)
-
-      io.to(room.id).emit("system_state_update", room.systems)
-    } catch (err) {
-      socket.emit("error_message", err.message)
+    room.task.currentCode = code
+    if (code.trim() === "") {
+      room.task.currentCode = room.task.originalCode
+      io.to(room.id).emit("code_restored", {
+        code: room.task.originalCode
+      })
+      return
     }
+    io.to(room.id).emit("code_updated", {
+      code,
+      updatedBy: socket.id
+    })
   })
 
-  socket.on("system_fix_attempt", ({ systemId }) => {
-    const room = roomService.getRoom(socket.roomId)
-    if (!room) return
+  // 🧪 Developer submits fix
+  socket.on("submit_code", ({ code }) => {
+  const room = roomService.getRoom(socket.roomId)
+  if (!room || room.status !== "in_progress") return
 
-    const player = room.players.find(p => p.socketId === socket.id)
-    if (!player || player.role !== "developer") return
+  const player = room.players.find(p => p.socketId === socket.id)
+  if (!player || player.role !== "developer") return
 
-    try {
-      systemService.fixSystem(room, systemId, socket.id)
+  const result = validateSubmission(room.task, code)
 
-      io.to(room.id).emit("system_state_update", room.systems)
+  if (!result.success) {
+    socket.emit("fix_failed", result.reason)
+    return
+  }
 
-      const result = gameService.checkWinCondition(room)
-      if (result) gameService.endGame(io, room, result)
+  room.task.status = "fixed"
+  room.task.fixedBy = socket.id
 
-    } catch (err) {
-      socket.emit("system_fix_fail", err.message)
-    }
+  io.to(room.id).emit("task_fixed", {
+    by: player.username
   })
 
-  socket.on("system_sabotage", ({ systemId }) => {
-    const room = roomService.getRoom(socket.roomId)
-    if (!room) return
+  const win = gameService.checkWinCondition(room)
+  if (win) gameService.endGame(io, room, win)
+ })
 
-    const player = room.players.find(p => p.socketId === socket.id)
-    if (!player || player.role !== "hacker") return
+  // 🧨 Hacker sabotage
+  socket.on("sabotage_task", () => {
+  const room = roomService.getRoom(socket.roomId)
+  if (!room || room.status !== "in_progress") return
 
-    try {
-      systemService.sabotageSystem(room, systemId, socket.id)
+  const player = room.players.find(p => p.socketId === socket.id)
+  if (!player || player.role !== "hacker") return
 
-      io.to(room.id).emit("system_state_update", room.systems)
+  room.task.status = "broken"
+  room.task.sabotagedBy = socket.id
+  room.task.attempts = 0
 
-      const result = gameService.checkWinCondition(room)
-      if (result) gameService.endGame(io, room, result)
-
-    } catch (err) {
-      socket.emit("error_message", err.message)
-    }
+  io.to(room.id).emit("task_sabotaged", {
+    by: player.username
   })
-
+})
 }
+

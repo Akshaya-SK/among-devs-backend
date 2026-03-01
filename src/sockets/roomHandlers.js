@@ -1,13 +1,45 @@
 const roomService = require("../services/roomService")
 const gameService = require("../services/gameService")
-const systemService = require("../services/systemService")
 
 
 module.exports = (io, socket) => {
+  const tryStartGame = (room) => {
+    if (room.players.length === 5 && room.status === "waiting") {
 
-  socket.on("create_room", ({ userId, username }) => {
+      const updatedRoom = gameService.initializeGame(room.id)
+
+      // Emit roles privately
+      updatedRoom.players.forEach(player => {
+        io.to(player.socketId).emit("role_assigned", player.role)
+      })
+
+      // Emit game started
+      io.to(updatedRoom.id).emit("game_started", {
+        task: updatedRoom.task,
+        timer: updatedRoom.timer
+      })
+    }
+  }
+
+  socket.on("join_room", ({ roomId, userId, username }) => {
     try {
-      const room = roomService.createRoom(socket.id, userId, username)
+      const room = roomService.joinRoom(roomId, socket.id, userId, username)
+
+      socket.join(room.id)
+      socket.roomId = room.id
+
+      io.to(room.id).emit("room_update", room)
+
+      tryStartGame(room)
+
+    } catch (err) {
+      socket.emit("error_message", err.message)
+    }
+  })
+
+  socket.on("create_room", ({ userId, username, language, difficulty }) => {
+    try {
+      const room = roomService.createRoom(socket.id, userId, username, language, difficulty)
       socket.join(room.id)
       socket.roomId = room.id
 
@@ -17,27 +49,23 @@ module.exports = (io, socket) => {
     }
   })
 
-  socket.on("join_room", ({ roomId, userId, username }) => {
+  socket.on("join_random", ({ userId, username, language, difficulty }) => {
     try {
-      const room = roomService.joinRoom(roomId, socket.id, userId, username)
-      socket.join(roomId)
+      const room = roomService.joinRandomRoom(
+        socket.id,
+        userId,
+        username,
+        language,
+        difficulty
+      )
+
+      socket.join(room.id)
       socket.roomId = room.id
 
-      io.to(roomId).emit("room_update", room)
+      io.to(room.id).emit("room_update", room)
 
       if (room.players.length === 5) {
-        console.log("AUTO START TRIGGERED")
-        const updatedRoom = gameService.initializeGame(roomId)
-
-        // Emit roles privately
-        updatedRoom.players.forEach(player => {
-          io.to(player.socketId).emit("role_assigned", player.role)
-        })
-
-        // Emit global game state
-        io.to(roomId).emit("game_started", {
-          systems: updatedRoom.systems
-        })
+        tryStartGame(room)
       }
 
     } catch (err) {
