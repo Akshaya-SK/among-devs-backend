@@ -25,7 +25,7 @@ function initializeGame(roomId) {
   }
 
   room.timer.startedAt = Date.now()
-  console.log("Timer started at:", room.timer.startedAt)
+  // console.log("Timer started at:", room.timer.startedAt)
 
   return room
 }
@@ -59,9 +59,9 @@ function checkWinCondition(room) {
   if (room.task.status === "fixed") {
     return { winner: "developers", reason: "Task fixed" }
   }
-  console.log("Checking timer for room:", room.id)
-  console.log("Elapsed:", Date.now() - room.timer.startedAt)
-  console.log("Duration:", room.timer.duration)
+  // console.log("Checking timer for room:", room.id)
+  // console.log("Elapsed:", Date.now() - room.timer.startedAt)
+  // console.log("Duration:", room.timer.duration)
   // Timer expired → hacker wins
   if (Date.now() - room.timer.startedAt > room.timer.duration) {
     console.log("Timer condition met")
