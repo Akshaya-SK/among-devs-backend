@@ -4,7 +4,7 @@ const gameService = require("../services/gameService")
 
 module.exports = (io, socket) => {
   const tryStartGame = (room) => {
-    if (room.players.length === 5 && room.phase === "waiting") {
+    if (room.players.length === 5 && room.phase === "lobby") {
 
       const updatedRoom = gameService.initializeGame(room.id)
 
@@ -29,6 +29,7 @@ module.exports = (io, socket) => {
       socket.roomId = room.id
 
       io.to(room.id).emit("room_update", room)
+      socket.emit("chat-history", room.messages)
 
       tryStartGame(room)
 

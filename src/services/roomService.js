@@ -37,6 +37,7 @@ function createRoom(socketId, userId, username, language, difficulty) {
 
     task: null,        // assigned when game starts
     votes: {},         // voterSocketId -> targetSocketId
+    messages: [],
 
     timer: {
       startedAt: null,
@@ -76,6 +77,8 @@ function joinRoom(roomId, socketId, userId, username) {
     hasCalledMeeting: false,
     isAlive: true
   })
+
+  
   console.log("Player count:", room.players.length)
 
   return room
@@ -113,7 +116,7 @@ function joinRandomRoom(socketId, userId, username, language, difficulty) {
     const room = rooms[roomId]
 
     if (
-      room.phase === "waiting" &&
+      room.phase === "lobby" &&
       room.players.length < 5 &&
       room.language === language &&
       room.difficulty === difficulty
