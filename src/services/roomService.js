@@ -13,7 +13,13 @@ function createRoom(socketId, userId, username, language, difficulty) {
     language,
     difficulty,
 
-    status: "waiting", // waiting | in_progress | ended
+    phase: "lobby", // lobby | playing | voting | results
+
+    meeting: {
+      calledBy: null,
+      startedAt: null,
+      duration: 60000 // 1 minute
+    },
 
     hostId: socketId,
     hackerId: null,
@@ -24,6 +30,7 @@ function createRoom(socketId, userId, username, language, difficulty) {
         userId,
         username,
         role: null,
+        hasCalledMeeting: false,
         isAlive: true
       }
     ],
@@ -55,7 +62,7 @@ function joinRoom(roomId, socketId, userId, username) {
   const room = rooms[roomId]
   if (!room) throw new Error("Room not found")
 
-  if (room.status !== "waiting")
+  if (room.phase !== "lobby")
     throw new Error("Game already started")
 
   if (room.players.length >= 5)
@@ -66,6 +73,7 @@ function joinRoom(roomId, socketId, userId, username) {
     userId,
     username,
     role: null,
+    hasCalledMeeting: false,
     isAlive: true
   })
   console.log("Player count:", room.players.length)
@@ -105,7 +113,7 @@ function joinRandomRoom(socketId, userId, username, language, difficulty) {
     const room = rooms[roomId]
 
     if (
-      room.status === "waiting" &&
+      room.phase === "waiting" &&
       room.players.length < 5 &&
       room.language === language &&
       room.difficulty === difficulty

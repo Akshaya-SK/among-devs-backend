@@ -16,14 +16,23 @@ module.exports = (server) => {
     for (const roomId in rooms) {
       const room = rooms[roomId]
 
-      if (room.status !== "in_progress") continue
+      // Skip if game not active
+      if (room.phase !== "playing" && room.phase !== "voting") continue
 
-      const result = require("../services/gameService")
-        .checkWinCondition(room)
+      // ⏳ Game timer
+      if (room.phase === "playing") {
+        const result = gameService.checkWinCondition(room)
+        if (result) {
+          gameService.endGame(io, room, result)
+          continue
+        }
+      }
 
-      if (result) {
-        require("../services/gameService")
-          .endGame(io, room, result)
+      // 🗳 Voting timeout
+      if (room.phase === "voting" && room.meeting.startedAt) {
+        if (Date.now() - room.meeting.startedAt > room.meeting.duration) {
+          gameService.resolveVotes(io, room)
+        }
       }
     }
   }, 1000)

@@ -4,7 +4,7 @@ const gameService = require("../services/gameService")
 
 module.exports = (io, socket) => {
   const tryStartGame = (room) => {
-    if (room.players.length === 5 && room.status === "waiting") {
+    if (room.players.length === 5 && room.phase === "waiting") {
 
       const updatedRoom = gameService.initializeGame(room.id)
 

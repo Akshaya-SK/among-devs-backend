@@ -7,7 +7,7 @@ module.exports = (io, socket) => {
   // 🔄 Real-time code sync
   socket.on("update_code", ({ code }) => {
     const room = roomService.getRoom(socket.roomId)
-    if (!room || room.status !== "in_progress") return
+    if (!room || room.phase !== "playing") return
 
     room.task.currentCode = code
     if (code.trim() === "") {
@@ -26,7 +26,7 @@ module.exports = (io, socket) => {
   // 🧪 Developer submits fix
   socket.on("submit_code", ({ code }) => {
   const room = roomService.getRoom(socket.roomId)
-  if (!room || room.status !== "in_progress") return
+  if (!room || room.phase !== "playing") return
 
   const player = room.players.find(p => p.socketId === socket.id)
   if (!player || player.role !== "developer") return
@@ -52,7 +52,7 @@ module.exports = (io, socket) => {
   // 🧨 Hacker sabotage
   socket.on("sabotage_task", () => {
   const room = roomService.getRoom(socket.roomId)
-  if (!room || room.status !== "in_progress") return
+  if (!room || room.phase !== "playing") return
 
   const player = room.players.find(p => p.socketId === socket.id)
   if (!player || player.role !== "hacker") return
@@ -65,5 +65,55 @@ module.exports = (io, socket) => {
     by: player.username
   })
 })
+
+  socket.on("emergency-meeting", () => {
+    const room = roomService.getRoom(socket.roomId)
+    if (!room) return
+    if (room.phase !== "playing") return
+    if (room.phase === "voting") return
+
+    const player = room.players.find(p => p.socketId === socket.id)
+    if (!player || !player.isAlive) return
+    if (player.hasCalledMeeting) return
+
+    player.hasCalledMeeting = true
+
+    room.phase = "voting"
+    room.votes = {}
+    room.meeting.startedAt = Date.now()
+    room.meeting.calledBy = socket.id
+
+    io.to(room.id).emit("meeting-started", {
+      calledBy: player.username
+    })
+  })
+
+
+
+  socket.on("cast-vote", ({ targetSocketId }) => {
+    const room = roomService.getRoom(socket.roomId)
+    if (!room) return
+    if (room.phase !== "playing") return
+    if (room.phase !== "voting") return
+
+    const voter = room.players.find(p => p.socketId === socket.id)
+    if (!voter || !voter.isAlive) return
+
+    if (room.votes[socket.id]) return // no double vote
+
+    // Allow skip by passing null
+    if (targetSocketId) {
+      const target = room.players.find(p => p.socketId === targetSocketId)
+      if (!target || !target.isAlive) return
+    }
+
+    room.votes[socket.id] = targetSocketId || "skip"
+
+    const aliveCount = room.players.filter(p => p.isAlive).length
+
+    if (Object.keys(room.votes).length === aliveCount) {
+      gameService.resolveVotes(io, room)
+    }
+  })
 }
 
