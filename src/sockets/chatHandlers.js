@@ -1,29 +1,32 @@
-socket.on("send-message", ({ message }) => {
+const roomService = require("../services/roomService")
+// const gameService = require("../services/gameService")
+
+module.exports = (io, socket) => {
+  socket.on("send-message", ({ message }) => {
   const room = roomService.getRoom(socket.roomId)
   if (!room) return
 
-  // ❌ No chat after game ends
+  if (room.phase !== "playing" && room.phase !== "voting" && room.phase !== "lobby") return
   if (room.phase === "results") return
 
   const player = room.players.find(p => p.socketId === socket.id)
-  if (!player) return
+  if (!player || !player.isAlive) return
 
-  // ❌ Dead players cannot chat
-  if (!player.isAlive) return
-
-  // Validation
-  if (!message || typeof message !== "string") return
-  if (message.trim().length === 0) return
-  if (message.length > 200) return
+  if (!message || message.length > 200) return
 
   const chatMessage = {
-    sender: player.username,
-    socketId: socket.id,
-    message: message.trim(),
+    id: Date.now(),
+    username: player.username,
+    message,
     timestamp: Date.now()
   }
 
   room.messages.push(chatMessage)
 
+  console.log("Chat from socket:", socket.id)
+  console.log("Room ID:", socket.roomId)
+  console.log("Players in room:", room.players.map(p => p.socketId))
+  console.log("Broadcasting message to room:", room.id)
   io.to(room.id).emit("new-message", chatMessage)
 })
+}

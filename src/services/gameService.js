@@ -95,6 +95,7 @@ function handlePlayerRemoval(room) {
 
 function resolveVotes(io, room) {
   const tally = {}
+  console.log("Resolving votes for room:", room.id)
 
   for (const voter in room.votes) {
     const target = room.votes[voter]

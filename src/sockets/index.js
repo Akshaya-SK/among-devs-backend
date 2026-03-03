@@ -1,6 +1,7 @@
 const { Server } = require("socket.io")
 const roomHandlers = require("./roomHandlers")
 const gameHandlers = require("./gameHandlers")
+const chatHandlers = require("./chatHandlers")
 const roomService = require("../services/roomService")
 const gameService = require("../services/gameService")
 
@@ -43,6 +44,7 @@ module.exports = (server) => {
     // Register room-related handlers
     roomHandlers(io, socket)
     gameHandlers(io, socket)
+    chatHandlers(io, socket)
     
     // Disconnect handling
     socket.on("disconnect", () => {

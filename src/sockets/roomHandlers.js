@@ -29,7 +29,7 @@ module.exports = (io, socket) => {
       socket.roomId = room.id
 
       io.to(room.id).emit("room_update", room)
-      socket.emit("chat-history", room.messages)
+      socket.emit("chat-history", room.messages || [])
 
       tryStartGame(room)
 
@@ -64,6 +64,7 @@ module.exports = (io, socket) => {
       socket.roomId = room.id
 
       io.to(room.id).emit("room_update", room)
+      socket.emit("chat-history", room.messages || [])
 
       if (room.players.length === 5) {
         tryStartGame(room)

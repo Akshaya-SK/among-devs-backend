@@ -129,6 +129,7 @@ function joinRandomRoom(socketId, userId, username, language, difficulty) {
         isAlive: true
       })
 
+      
       return room
     }
   }

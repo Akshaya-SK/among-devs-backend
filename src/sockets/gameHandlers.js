@@ -92,9 +92,12 @@ module.exports = (io, socket) => {
 
   socket.on("cast-vote", ({ targetSocketId }) => {
     const room = roomService.getRoom(socket.roomId)
+    console.log("Votes so far:", Object.keys(room.votes).length)
+    console.log("Alive count:", room.players.filter(p => p.isAlive).length)
     if (!room) return
-    if (room.phase !== "playing") return
     if (room.phase !== "voting") return
+    // if (room.phase !== "playing") return
+    
 
     const voter = room.players.find(p => p.socketId === socket.id)
     if (!voter || !voter.isAlive) return
